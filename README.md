@@ -1,4 +1,4 @@
-## usage: python quine_mccloskey.py
+*usage: python quine_mccloskey.py*
   
 input eg)  
 m: 0 2 5 6 7 8 9 13  
