@@ -201,7 +201,7 @@ if __name__ == "__main__":
     li2 = list(map(int, input("don't care: ").split(' ')))
     # n = 4
     n = int(input("n: "))
-    print("result: ")
+    print("result: ", end='')
     if li2[0] == "-1":
         li2.clear()
     result = quine_mccloskey(n, li1, li2)
