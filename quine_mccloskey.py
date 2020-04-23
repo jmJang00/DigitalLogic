@@ -2,7 +2,7 @@ from itertools import combinations
 
 notation_table = {}
 
-def to_binary_string(n, num):
+def binary_string_formatting(n, num):
     ret_str = bin(num)[2:]
     num_len = len(ret_str)
     if num_len < n:
@@ -20,19 +20,19 @@ def make_count_dic(n, li):
             tmp //= 2
         if not cnt in dic:
             dic[cnt] = []
-        binary_string = to_binary_string(n, i)
+        binary_string = binary_string_formatting(n, i)
         dic[cnt].append(binary_string)
         notation_table[binary_string] = (i, )
     return dic
 
-def find_primary_implicant(dic):
+def merge_implicants(dic):
     new_dic = {}
     for cycle, i in enumerate(dic):
         if cycle == len(dic) - 1:
             break
         for j in range(len(dic[i])):
             for k in range(len(dic[i+1])):
-                possible_merge, binary_string = is_implicant(dic[i][j], dic[i+1][k])
+                possible_merge, binary_string = can_merge(dic[i][j], dic[i+1][k])
                 if possible_merge:
                     if not i in new_dic:
                         new_dic[i] = set()
@@ -42,7 +42,7 @@ def find_primary_implicant(dic):
             new_dic[i] = list(new_dic[i])
     return new_dic
 
-def is_implicant(bstr1, bstr2):
+def can_merge(bstr1, bstr2):
     ret = False
     bstrli = list(bstr1)
     for i in range(len(bstr1)):
@@ -59,61 +59,6 @@ def is_implicant(bstr1, bstr2):
         bstrli = []
     return ret, "".join(bstrli)
 
-def quine_mccloskey(n, li1, li2):
-    li3 = []
-    li3.extend(li1)
-    li3.extend(li2)
-    li3.sort()
-    li4 = []
-    li4.append(make_count_dic(n, li3))
-    i = 0
-    while True:
-        dic = find_primary_implicant(li4[i])
-        if len(dic) == 0:
-            break
-        li4.append(dic)
-        i += 1
-        output_code_set = ()
-        li4.append({})
-        for ones_num in li4[i]:
-            for bstr in li4[i][ones_num]:
-                output_code_set += notation_table[bstr]
-        output_code_set = set(output_code_set)
-        for ones_num in li4[i-1]:
-            for bstr in li4[i-1][ones_num]:
-                is_in_output = False
-                for num in notation_table[bstr]:
-                    if not num in output_code_set:
-                        is_in_output = True
-                        break
-                if is_in_output:
-                    if not ones_num in li4[i+1]:
-                        li4[i+1][ones_num] = []
-                    li4[i+1][ones_num].append(bstr)
-        li4[i-1], li4[i+1] = li4[i+1], li4[i-1]
-        del li4[i+1]
-    while True:
-        if not {} in li4:
-            break
-        li4.remove({})
-
-    pi_li = []
-    for i in range(len(li4)):
-        pi_li.append([])
-        for j in li4[i]:
-            pi_li[i].extend(li4[i][j])
-
-    input_li = make_numberset_list(pi_li, li1)
-    difference_of_sets(input_li)
-
-    for i in range(len(input_li)):
-        column_dominace_optimization(input_li[i], pi_li[i])
-        row_dominace_optimization(input_li[i], pi_li[i])
-
-    result = make_possible_cases(input_li, pi_li)
-
-    return result
-
 def make_possible_cases(input_li, all_pi_li):
     total_pi_li = []
     total_input_set = set()
@@ -129,6 +74,10 @@ def make_possible_cases(input_li, all_pi_li):
                 containing |= set(notation_table[j])
             if total_input_set == total_input_set & containing:
                 possible_case.append(pis)
+
+        if possible_case:
+            break
+
     return possible_case
 
 def make_numberset_list(li, correct_input_list):
@@ -176,6 +125,75 @@ def column_dominace_optimization(input_set, pi_li):
     for i in list(remove_set):
         input_set.remove(i)
 
+def notation_to_formula(notation):
+    notation_to_formula.alphabet_alignment = "abcdefghijklmnopqrstuvwxyz"
+    formula_element = []
+    for minterm in notation:
+        replacement = ""
+        for iter, literal in enumerate(minterm):
+            if literal == "-":
+                continue
+            replacement += notation_to_formula.alphabet_alignment[iter]
+            if literal == "0":
+                replacement += "'"
+        formula_element.append(replacement)
+    return " + ".join(formula_element)
+
+def quine_mccloskey(n, implicant_li, dont_care_li):
+    operating_li = []
+    operating_li.extend(implicant_li)
+    operating_li.extend(dont_care_li)
+    operating_li.sort()
+    list_of_count_dic = []
+    list_of_count_dic.append(make_count_dic(n, operating_li))
+    i = 0
+    while True:
+        dic = merge_implicants(list_of_count_dic[i])
+        if len(dic) == 0:
+            break
+        list_of_count_dic.append(dic)
+        i += 1
+        output_code_set = ()
+        list_of_count_dic.append({})
+        for ones_num in list_of_count_dic[i]:
+            for bstr in list_of_count_dic[i][ones_num]:
+                output_code_set += notation_table[bstr]
+        output_code_set = set(output_code_set)
+        for ones_num in list_of_count_dic[i-1]:
+            for bstr in list_of_count_dic[i-1][ones_num]:
+                is_in_output = False
+                for num in notation_table[bstr]:
+                    if not num in output_code_set:
+                        is_in_output = True
+                        break
+                if is_in_output:
+                    if not ones_num in list_of_count_dic[i+1]:
+                        list_of_count_dic[i+1][ones_num] = []
+                    list_of_count_dic[i+1][ones_num].append(bstr)
+        list_of_count_dic[i-1], list_of_count_dic[i+1] = list_of_count_dic[i+1], list_of_count_dic[i-1]
+        del list_of_count_dic[i+1]
+    while True:
+        if not {} in list_of_count_dic:
+            break
+        list_of_count_dic.remove({})
+
+    pi_li = []
+    for i in range(len(list_of_count_dic)):
+        pi_li.append([])
+        for j in list_of_count_dic[i]:
+            pi_li[i].extend(list_of_count_dic[i][j])
+
+    input_li = make_numberset_list(pi_li, implicant_li)
+    difference_of_sets(input_li)
+
+    for i in range(len(input_li)):
+        column_dominace_optimization(input_li[i], pi_li[i])
+        row_dominace_optimization(input_li[i], pi_li[i])
+
+    result = make_possible_cases(input_li, pi_li)
+
+    return result
+
 if __name__ == "__main__":
     # li1 = [0, 2, 5, 6, 7, 8, 9, 13]
     li1 = list(map(int, input("m: ").split(' ')))
@@ -184,4 +202,9 @@ if __name__ == "__main__":
     # n = 4
     n = int(input("n: "))
     print("result: ")
-    print(quine_mccloskey(n, li1, li2))
+    if li2[0] == "-1":
+        li2.clear()
+    result = quine_mccloskey(n, li1, li2)
+    print(result)
+    for i in result:
+        print(notation_to_formula(i))
